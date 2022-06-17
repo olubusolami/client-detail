@@ -37,6 +37,8 @@ app.use(express.json());
 app.use("/user", signupHandler, authRoute);
 app.use("/", authRoute);
 app.use("/", postRoute);
+
+//404 error
 app.use((req, res, next) => {
   res.status(404).json({
     message: "Ohh you are lost, tap back to find your way back home :)",
