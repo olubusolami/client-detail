@@ -3,8 +3,17 @@ const Token = require("../model/user_token");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
-const Mailgun = require("mailgun.js");
+const mailClient = require("../email/email-util")
 
+exports.sendmail = async function (req, res) {
+  try {
+    mailClient.sendEmail("belloridwan60@gmail.com")
+    return res.send({ "done": done });
+  } catch (error) {
+    return res.send({ "error": error });
+    
+  }
+}
 
 exports.signup = async function (req, res) {
   try {
