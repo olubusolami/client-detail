@@ -3,17 +3,8 @@ const Token = require("../model/user_token");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
-const mailClient = require("../email/email-util")
+const sendMail = require('../utils/email');
 
-exports.sendmail = async function (req, res) {
-  try {
-    mailClient.sendEmail("belloridwan60@gmail.com")
-    return res.send({ "done": done });
-  } catch (error) {
-    return res.send({ "error": error });
-    
-  }
-}
 
 exports.signup = async function (req, res) {
   try {
@@ -48,29 +39,21 @@ exports.signup = async function (req, res) {
       token: crypto.randomBytes(16).toString("hex"),
     });
     const token = await generatedToken.save();
+    console.log("done")
 
-    const messageData = {
-      from: "CLIENT <me@samples.mailgun.org>",
-      to: req.body.email,
-      subject: "Account Verification Link",
-      html: `<html><b>Hey ${req.body.name}!</b><br><p>Kindly verify your account by clicking the link <a href="https://www.google.com">here</a></p></html>`,
-    };
+    // Send Message
+    await sendMail({
+      email: user.email,
+      subject: 'Account Verification Link',
+      message: `<html><b>Hey ${req.body.name}!</b><br><p>Kindly verify your account by clicking the link <a href="https://www.google.com">here</a></p></html>` ,
+    })
+    
+    console.log("done sending email")
 
-    console.log("The Email goes to: ", req.body.email);
-    emailClient.messages
-      .create(process.env.MAILGUN_DOMAIN, messageData)
-      .then((resp) => {
-        console.log(resp);
-        res.send({
-          message: "Success " + resp.message,
-        });
-      })
-      .catch((err) => {
-        console.error(err);
-        res.send({ error: err });
-      });
+    return res.status(200).json({"msg": "User registered successfully"})
+   
   } catch (e) {
-    return { error: e };
+    return res.json({error: e});
   }
 };
 
