@@ -3,11 +3,23 @@ const Token = require("../model/user_token");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
-const sendMail = require('../utils/email');
+const Mailgun = require("mailgun.js");
+const formData = require("form-data");
 
+const mailgun = new Mailgun(formData);
+const emailClient = mailgun.client({
+  username: "api",
+  key: process.env.MAILGUN_API_KEY,
+});
 
 exports.signup = async function (req, res) {
   try {
+    // // checking if user is already in the database
+    // const emailExist = await User.findOne({ email: req.body.email });
+
+    // if (emailExist)
+    //   return res.status(400).json({ message: "Email already exist" });
+
     // lets validate the data before use
     const validatePassword = (password) => {
       const re =
@@ -32,28 +44,32 @@ exports.signup = async function (req, res) {
       password: hashedPassword,
     });
     const user = await theUser.save();
-    console.log("User: ", user);
 
     const generatedToken = new Token({
       userId: user._id,
       token: crypto.randomBytes(16).toString("hex"),
     });
     const token = await generatedToken.save();
-    console.log("done")
 
-    // Send Message
-    await sendMail({
-      email: user.email,
-      subject: 'Account Verification Link',
-      message: `<html><b>Hey ${req.body.name}!</b><br><p>Kindly verify your account by clicking the link <a href="https://www.google.com">here</a></p></html>` ,
-    })
-    
-    console.log("done sending email")
-
-    return res.status(200).json({"msg": "User registered successfully"})
-   
+    const messageData = {
+      from: "CLIENT <me@samples.mailgun.org>",
+      to: req.body.email,
+      subject: "Verification Email",
+      text: `Hey ${req.body.name}, it’s our first message saying welcome`,
+      html: `<b>Hey ${req.body.name}! </b><br> Kindly verify your account by clicking the link <a href="http://${req.headers.host}/verify/${token.token}">here</a>`,
+    };
+    emailClient.messages
+      .create(process.env.MAILGUN_DOMAIN, messageData)
+      .then((resp) => {
+        res.send({
+          message: "Success" + resp.message,
+        });
+      })
+      .catch((err) => {
+        console.error(err);
+      });
   } catch (e) {
-    return res.json({error: e});
+    return { error: e };
   }
 };
 
@@ -80,7 +96,6 @@ exports.token = async function (req, res) {
             .status(200)
             .send("User has been already verified. Please Login");
         }
-
         // verify user
         else {
           // change isVerified to true
@@ -90,7 +105,6 @@ exports.token = async function (req, res) {
             if (err) {
               return res.status(500).send({ msg: err.message });
             }
-
             // account successfully verified
             else {
               return res.status(200).send({
@@ -127,5 +141,5 @@ exports.login = async function (req, res) {
 
   //create and assign a token
   const token = jwt.sign({ _id: user._id }, process.env.TOKEN_SECRET);
-  return res.status(200).send({ user: user.email, token: token });
+  return res.status(200).send({ user: user, token: token });
 };
